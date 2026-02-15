@@ -2,27 +2,43 @@ package main
 
 import (
 	"log"
+	"os"
 	"time"
 
 	"flux/internal/config"
-	"flux/internal/http"
-	"flux/internal/wg"
+	httpapi "flux/internal/http"
+
+	"github.com/gin-gonic/gin"
 )
 
-var startTime = time.Now()
+var (
+	version   = "dev"
+	commit    = "none"
+	buildDate = "unknown"
+	startTime = time.Now()
+)
 
 func main() {
+	log.Printf("Starting Flux...")
+	log.Printf("Version: %s | Commit: %s | BuildDate: %s", version, commit, buildDate)
+
+	// Load config
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to load config: %v", err)
 	}
 
-	if err := wg.Ensure(cfg); err != nil {
-		log.Fatal(err)
+	// Set Gin mode
+	if os.Getenv("GIN_MODE") == "release" {
+		gin.SetMode(gin.ReleaseMode)
 	}
 
-	router := http.NewRouter(cfg, startTime)
+	// Create router
+	router := httpapi.NewRouter(cfg, version, commit, buildDate, startTime)
 
-	log.Println("agent listening on :8080")
-	router.Run(":8080")
+	log.Printf("Flux listening on :8080")
+
+	if err := router.Run(":8080"); err != nil {
+		log.Fatalf("server failed: %v", err)
+	}
 }

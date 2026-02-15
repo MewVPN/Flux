@@ -4,7 +4,7 @@ set -e
 APP_NAME="flux"
 
 if [ -z "$1" ]; then
-  echo "Usage: ./build.sh v0.5.0"
+  echo "Usage: ./build.sh vX.Y.Z"
   exit 1
 fi
 

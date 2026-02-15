@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter(cfg *config.Config, start time.Time) *gin.Engine {
+func NewRouter(cfg *config.Config, version, commit, buildDate string, start time.Time) *gin.Engine {
 	r := gin.Default()
 
 	StartServicesHealthChecker()
@@ -17,6 +17,7 @@ func NewRouter(cfg *config.Config, start time.Time) *gin.Engine {
 	r.POST("/bootstrap", Bootstrap(cfg))
 	r.GET("/health/self", HealthSelf(cfg))
 	r.GET("/health/services", HealthServices)
+	r.GET("/version", VersionHandler(version, commit, buildDate))
 
 	protected := r.Group("/")
 	protected.Use(Auth(cfg))
