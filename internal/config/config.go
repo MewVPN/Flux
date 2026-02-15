@@ -6,9 +6,10 @@ import (
 )
 
 type Config struct {
-	UUID         string `json:"uuid"`
-	Name         string `json:"name"`
-	SharedSecret string `json:"sharedSecret"`
+	UUID          string `json:"uuid"`
+	Name          string `json:"name"`
+	SharedSecret  string `json:"sharedSecret"`
+	BootstrapHost string `json:"bootstrapHost"`
 
 	WGEasyUser     string `json:"wgEasyUser"`
 	WGEasyPassword string `json:"wgEasyPassword"`

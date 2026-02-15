@@ -1,7 +1,6 @@
 package http
 
 import (
-	"flux/internal/config"
 	"net/http"
 	"sync"
 	"time"
@@ -9,114 +8,139 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const (
-	serviceTimeout = 2 * time.Second
-	checkInterval  = 1 * time.Hour
-)
-
-type serviceResult struct {
+type ServiceResult struct {
 	Status     string `json:"status"`
-	LatencyMs  int64  `json:"latencyMs,omitempty"`
-	HTTPStatus int    `json:"httpStatus,omitempty"`
-	Error      string `json:"error,omitempty"`
+	LatencyMs  int64  `json:"latencyMs"`
+	JitterMs   int64  `json:"jitterMs"`
+	HTTPStatus int    `json:"httpStatus"`
+	Samples    int    `json:"samples"`
 }
 
-type servicesCache struct {
-	sync.RWMutex
-	LastChecked time.Time                `json:"lastChecked"`
-	Services    map[string]serviceResult `json:"services"`
+type ServicesHealth struct {
+	LastChecked   time.Time                `json:"lastChecked"`
+	OverallStatus string                   `json:"overallStatus"`
+	Services      map[string]ServiceResult `json:"services"`
 }
 
 var (
-	httpClient = &http.Client{Timeout: serviceTimeout}
-
-	services = map[string]string{
-		"instagram": "https://www.instagram.com/robots.txt",
-		"whatsapp":  "https://web.whatsapp.com",
-		"chatgpt":   "https://chat.openai.com",
-		"telegram":  "https://api.telegram.org",
-	}
-
-	cache = servicesCache{
-		Services: make(map[string]serviceResult),
-	}
+	healthMu sync.RWMutex
+	cached   ServicesHealth
 )
 
-func HealthSelf(cfg *config.Config) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status":       "ok",
-			"bootstrapped": cfg.SharedSecret != "",
-		})
-	}
-}
-
-func HealthServices(c *gin.Context) {
-	cache.RLock()
-	defer cache.RUnlock()
-
-	if cache.LastChecked.IsZero() {
-		c.JSON(503, gin.H{
-			"status":  "not_ready",
-			"message": "services check not completed yet",
-		})
-		return
-	}
-
-	c.JSON(200, gin.H{
-		"lastChecked": cache.LastChecked.UTC(),
-		"services":    cache.Services,
-	})
+var targets = map[string]string{
+	"chatgpt":   "https://chat.openai.com",
+	"instagram": "https://www.instagram.com",
+	"telegram":  "https://web.telegram.org",
+	"whatsapp":  "https://www.whatsapp.com",
 }
 
 func StartServicesHealthChecker() {
 	go func() {
-		// first run immediately
-		runServicesCheck()
+		runCheck()
 
-		ticker := time.NewTicker(checkInterval)
+		ticker := time.NewTicker(2 * time.Hour)
 		defer ticker.Stop()
 
 		for range ticker.C {
-			runServicesCheck()
+			runCheck()
 		}
 	}()
 }
 
-func runServicesCheck() {
-	results := make(map[string]serviceResult)
+func runCheck() {
+	results := make(map[string]ServiceResult)
+	upCount := 0
 
-	for name, url := range services {
-		start := time.Now()
-
-		req, err := http.NewRequest("GET", url, nil)
-		if err != nil {
-			results[name] = serviceResult{
-				Status: "error",
-				Error:  err.Error(),
-			}
-			continue
-		}
-
-		resp, err := httpClient.Do(req)
-		if err != nil {
-			results[name] = serviceResult{
-				Status: "down",
-				Error:  err.Error(),
-			}
-			continue
-		}
-		resp.Body.Close()
-
-		results[name] = serviceResult{
-			Status:     "up",
-			LatencyMs:  time.Since(start).Milliseconds(),
-			HTTPStatus: resp.StatusCode,
+	for name, url := range targets {
+		res := measureService(url)
+		results[name] = res
+		if res.Status == "up" {
+			upCount++
 		}
 	}
 
-	cache.Lock()
-	cache.Services = results
-	cache.LastChecked = time.Now()
-	cache.Unlock()
+	overall := "critical"
+	if upCount == len(targets) {
+		overall = "healthy"
+	} else if upCount > 0 {
+		overall = "degraded"
+	}
+
+	healthMu.Lock()
+	cached = ServicesHealth{
+		LastChecked:   time.Now().UTC(),
+		OverallStatus: overall,
+		Services:      results,
+	}
+	healthMu.Unlock()
+}
+
+func HealthServices(c *gin.Context) {
+	healthMu.RLock()
+	defer healthMu.RUnlock()
+	c.JSON(http.StatusOK, cached)
+}
+
+func measureService(url string) ServiceResult {
+	const samples = 3
+	var latencies []int64
+	var lastStatus int
+
+	client := &http.Client{
+		Timeout: 2 * time.Second,
+	}
+
+	for i := 0; i < samples; i++ {
+		start := time.Now()
+		resp, err := client.Get(url)
+		elapsed := time.Since(start).Milliseconds()
+
+		if err != nil {
+			return ServiceResult{
+				Status:    "down",
+				LatencyMs: 0,
+				JitterMs:  0,
+				Samples:   i,
+			}
+		}
+
+		lastStatus = resp.StatusCode
+		resp.Body.Close()
+
+		latencies = append(latencies, elapsed)
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	return ServiceResult{
+		Status:     "up",
+		LatencyMs:  average(latencies),
+		JitterMs:   calculateJitter(latencies),
+		HTTPStatus: lastStatus,
+		Samples:    samples,
+	}
+}
+
+func average(values []int64) int64 {
+	var sum int64
+	for _, v := range values {
+		sum += v
+	}
+	return sum / int64(len(values))
+}
+
+func calculateJitter(values []int64) int64 {
+	if len(values) < 2 {
+		return 0
+	}
+
+	var total int64
+	for i := 1; i < len(values); i++ {
+		diff := values[i] - values[i-1]
+		if diff < 0 {
+			diff = -diff
+		}
+		total += diff
+	}
+
+	return total / int64(len(values)-1)
 }
