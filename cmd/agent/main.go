@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flux/internal/wg"
 	"log"
 	"net/http"
 	"os"
@@ -35,6 +36,11 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
+	log.Println("Ensuring wg-easy...")
+	if err := wg.Ensure(cfg); err != nil {
+		log.Printf("wg ensure error: %v", err)
+	}
+
 	router := httpapi.NewRouter(cfg, version, commit, buildDate, startTime)
 
 	srv := &http.Server{
@@ -49,7 +55,6 @@ func main() {
 		}
 	}()
 
-	// graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit

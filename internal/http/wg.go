@@ -21,7 +21,6 @@ func WGList(cfg *config.Config) gin.HandlerFunc {
 
 		body, _ := io.ReadAll(resp.Body)
 
-		// no filtering
 		status := c.Query("status")
 		if status == "" {
 			c.Data(resp.StatusCode, "application/json", body)
@@ -51,7 +50,6 @@ func WGList(cfg *config.Config) gin.HandlerFunc {
 	}
 }
 
-// WGCreate POST /wg/peers
 func WGCreate(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		resp, err := wg.Request(cfg, "POST", "/client")
@@ -66,7 +64,6 @@ func WGCreate(cfg *config.Config) gin.HandlerFunc {
 	}
 }
 
-// WGEnable POST /wg/peers/:id/enable
 func WGEnable(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
@@ -83,7 +80,6 @@ func WGEnable(cfg *config.Config) gin.HandlerFunc {
 	}
 }
 
-// WGDisable POST /wg/peers/:id/disable
 func WGDisable(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
@@ -100,7 +96,6 @@ func WGDisable(cfg *config.Config) gin.HandlerFunc {
 	}
 }
 
-// WGConfig GET /wg/peers/:id/config
 func WGConfig(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")

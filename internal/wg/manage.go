@@ -15,17 +15,14 @@ const (
 	name  = "wg-easy"
 )
 
-// Ensure makes sure wg-easy is running and initialized
 func Ensure(cfg *config.Config) error {
 	log.Println("[wg] ensure wg-easy")
 
-	// docker availability
 	if !docker.Available() {
 		log.Println("[wg] docker not available, skipping wg-easy management")
 		return nil
 	}
 
-	// already running
 	if running() {
 		log.Println("[wg] wg-easy already running")
 		return nil
@@ -33,7 +30,6 @@ func Ensure(cfg *config.Config) error {
 
 	log.Println("[wg] wg-easy not running, preparing to start")
 
-	// credentials (persisted in config)
 	if cfg.WGEasyUser == "" || cfg.WGEasyPassword == "" {
 		log.Println("[wg] wg-easy credentials not found, generating")
 
@@ -50,7 +46,6 @@ func Ensure(cfg *config.Config) error {
 		log.Println("[wg] wg-easy credentials already present in config")
 	}
 
-	// detect host for INIT_HOST
 	initHost := util.DetectPublicIP()
 	log.Printf("[wg] detected IP for INIT_HOST: %s\n", initHost)
 
@@ -89,7 +84,6 @@ func Ensure(cfg *config.Config) error {
 
 	log.Println("[wg] wg-easy container started, waiting for API")
 
-	// wait until API is available
 	for i := 1; i <= 10; i++ {
 		if running() {
 			log.Printf("[wg] wg-easy is ready (attempt %d/10)\n", i)

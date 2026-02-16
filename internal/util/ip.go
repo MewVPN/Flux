@@ -4,7 +4,6 @@ import (
 	"net"
 )
 
-// DetectPublicIP tries to find a non-loopback IPv4 address
 func DetectPublicIP() string {
 	ifaces, err := net.Interfaces()
 	if err != nil {
@@ -12,7 +11,6 @@ func DetectPublicIP() string {
 	}
 
 	for _, iface := range ifaces {
-		// interface must be up
 		if iface.Flags&net.FlagUp == 0 {
 			continue
 		}
@@ -38,18 +36,16 @@ func DetectPublicIP() string {
 
 			ip = ip.To4()
 			if ip == nil {
-				continue // not IPv4
+				continue
 			}
 
 			if ip.IsLoopback() {
 				continue
 			}
 
-			// found a valid IPv4
 			return ip.String()
 		}
 	}
 
-	// fallback
 	return "127.0.0.1"
 }

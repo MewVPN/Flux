@@ -22,7 +22,7 @@ func NewRouter(
 	r.POST("/bootstrap", Bootstrap(cfg))
 	r.GET("/health/self", HealthSelf(cfg, start))
 	r.GET("/health/services", HealthServices)
-	r.GET("/version", VersionHandler(version, commit, buildDate))
+	r.GET("/version", VersionHandler(version, commit, buildDate, cfg.Name))
 
 	protected := r.Group("/")
 	protected.Use(Auth(cfg))
