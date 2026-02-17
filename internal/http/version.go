@@ -1,14 +1,19 @@
 package http
 
-import "github.com/gin-gonic/gin"
+import (
+	"flux/internal/config"
 
-func VersionHandler(version, commit, buildDate string, name string) gin.HandlerFunc {
+	"github.com/gin-gonic/gin"
+)
+
+func VersionHandler(cfg *config.Config, version, commit, buildDate string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.JSON(200, gin.H{
-			"name":      name,
-			"version":   version,
-			"commit":    commit,
-			"buildDate": buildDate,
+			"name":         cfg.Name,
+			"version":      version,
+			"commit":       commit,
+			"buildDate":    buildDate,
+			"bootstrapped": cfg.SharedSecret != "",
 		})
 	}
 }
