@@ -20,14 +20,13 @@ func NewRouter(
 	StartServicesHealthChecker()
 
 	r.POST("/bootstrap", Bootstrap(cfg))
-	r.GET("/health/self", HealthSelf(cfg, start))
-	r.GET("/health/services", HealthServices)
-	r.GET("/version", VersionHandler(cfg, version, commit, buildDate))
+	r.GET("/services", ServicesHandler)
+	r.GET("/version", VersionHandler(version, commit, buildDate))
 
 	protected := r.Group("/")
 	protected.Use(Auth(cfg))
 
-	protected.GET("/status", Status(cfg, start))
+	protected.GET("/status", StatusHandler(cfg, start))
 	protected.GET("/wg/status", wg.StatusHandler())
 
 	protected.GET("/wg/peers", WGList(cfg))

@@ -59,6 +59,8 @@ func Ensure(cfg *config.Config) error {
 		"--cap-add", "NET_ADMIN",
 		"--cap-add", "SYS_MODULE",
 
+		"--device", "/dev/net/tun",
+
 		"-p", "51820:51820/udp",
 		"-p", "51821:51821/tcp",
 
@@ -71,8 +73,10 @@ func Ensure(cfg *config.Config) error {
 		"-e", "INSECURE=true",
 
 		"-v", "/etc/wireguard:/etc/wireguard",
+		"-v", "/lib/modules:/lib/modules:ro",
 
 		"--sysctl", "net.ipv4.conf.all.src_valid_mark=1",
+		"--sysctl", "net.ipv4.ip_forward=1",
 
 		image,
 	)

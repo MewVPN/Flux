@@ -4,16 +4,35 @@ import (
 	"time"
 
 	"flux/internal/config"
+	"flux/internal/wg"
 
 	"github.com/gin-gonic/gin"
 )
 
-func Status(cfg *config.Config, start time.Time) gin.HandlerFunc {
+func StatusHandler(cfg *config.Config, start time.Time) gin.HandlerFunc {
 	return func(c *gin.Context) {
+
+		uptime := int(time.Since(start).Seconds())
+		bootstrapped := cfg.SharedSecret != ""
+
+		wgRunning := wg.Running()
+		wgPeers := wg.PeerCount()
+
+		overall := "healthy"
+		if !wgRunning {
+			overall = "degraded"
+		}
+
 		c.JSON(200, gin.H{
-			"uniqueId":      cfg.UUID,
+			"unique_id":     cfg.UUID,
 			"name":          cfg.Name,
-			"uptimeSeconds": int(time.Since(start).Seconds()),
+			"bootstrapped":  bootstrapped,
+			"uptimeSeconds": uptime,
+			"overallStatus": overall,
+			"wg": gin.H{
+				"running": wgRunning,
+				"peers":   wgPeers,
+			},
 		})
 	}
 }

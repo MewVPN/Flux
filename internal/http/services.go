@@ -75,7 +75,7 @@ func runCheck() {
 	healthMu.Unlock()
 }
 
-func HealthServices(c *gin.Context) {
+func ServicesHandler(c *gin.Context) {
 	healthMu.RLock()
 	defer healthMu.RUnlock()
 	c.JSON(http.StatusOK, cached)
